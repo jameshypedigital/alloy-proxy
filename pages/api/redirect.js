@@ -13,7 +13,7 @@ export default async function handler(req, res) {
 
     let finalUrl = null;
     let location_slug = null;
-    let offer = null;
+    let landing_page = null;
     let page_type = null;
 
     /* ===============================
@@ -40,11 +40,11 @@ export default async function handler(req, res) {
        /<location_slug>/<offer>
     =============================== */
     else if (path.length >= 2) {
-      page_type = "offer";
+      page_type = "landing_page";
       location_slug = path[0];
-      offer = path[1];
+      landing_page = path[1];
 
-      finalUrl = `https://alloy-promo.com/${offer}?location=${location_slug}`;
+      finalUrl = `https://alloy-promo.com/${landing_page}?location=${location_slug}`;
     }
 
     /* ===============================
