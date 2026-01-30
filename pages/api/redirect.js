@@ -2,32 +2,32 @@ export default async function handler(req, res) {
   try {
     const { slug = [] } = req.query;
     const utm = { ...req.query };
-
-    // Remove slug array from UTM payload
     delete utm.slug;
 
-    // Normalize path
     const path = Array.isArray(slug)
       ? slug.map(s => s.toLowerCase().trim())
       : [slug.toLowerCase().trim()];
 
     let finalUrl = null;
     let location_slug = null;
-    let landing_page = null;
+    let offer = null;
     let page_type = null;
 
     /* ===============================
        BLOG POSTS
        /blog/<blog-slug>
+       -> https://alloypersonaltraining.com/<blog-slug>/
     =============================== */
     if (path[0] === "blog" && path[1]) {
       page_type = "blog";
-      finalUrl = `https://alloypersonaltraining.com/${path[1]}/`;
+      offer = path[1];
+      finalUrl = `https://alloypersonaltraining.com/${offer}/`;
     }
 
     /* ===============================
        LOCATION PAGE
        /locations/<location_slug>
+       -> https://alloypersonaltraining.com/location/<location_slug>/
     =============================== */
     else if (path[0] === "locations" && path[1]) {
       page_type = "location";
@@ -38,18 +38,16 @@ export default async function handler(req, res) {
     /* ===============================
        OFFER PAGE
        /<location_slug>/<offer>
+       -> https://www.alloy-promo.com/<location_slug>/<offer>
     =============================== */
     else if (path.length >= 2) {
-      page_type = "offer";
+      page_type = "landing_page";
       location_slug = path[0];
-      landing_page = path[1];
+      offer = path[1];
 
-      finalUrl = `https://alloy-promo.com/${location_slug}?location=${landing_page}`;
+      finalUrl = `https://www.alloy-promo.com/${location_slug}/${offer}`;
     }
 
-    /* ===============================
-       INVALID ROUTE
-    =============================== */
     else {
       return res.status(400).json({
         ok: false,
@@ -57,9 +55,6 @@ export default async function handler(req, res) {
       });
     }
 
-    /* ===============================
-       TRACK EVENT (n8n)
-    =============================== */
     await fetch("https://dashtraq.app.n8n.cloud/webhook/redirect-track", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -67,7 +62,7 @@ export default async function handler(req, res) {
         brand: "alloy",
         page_type,
         location_slug,
-        landing_page,
+        offer,
         utm,
         timestamp: Date.now()
       })
@@ -82,3 +77,4 @@ export default async function handler(req, res) {
     });
   }
 }
+
