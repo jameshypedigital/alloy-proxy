@@ -1,0 +1,54 @@
+import { useEffect } from "react";
+
+export default function RedirectPage() {
+  useEffect(() => {
+    const path = window.location.pathname.split("/").filter(Boolean);
+    const locationId = path[0];
+    const landingPage = path[1];
+
+    if (!locationId || !landingPage) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const utm = Object.fromEntries(params.entries());
+
+    // Send tracking
+    fetch("https://dashtraq.app.n8n.cloud/webhook/redirect-track", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        client: "alloy",
+        location_id: locationId,
+        landing_page: landingPage,
+        utm,
+        source: utm.utm_source || "unknown",
+        timestamp: Date.now()
+      })
+    });
+
+    let finalUrl;
+
+    if (landingPage.startsWith("blog-")) {
+      finalUrl = `https://www.alloy-promo.com/blog/${landingPage.replace("blog-", "")}`;
+    } else if (landingPage === "online-signup") {
+      finalUrl = `https://join.alloy-promo.com/${locationId}`;
+    } else {
+      finalUrl = `https://www.alloy-promo.com/offer/${landingPage}?location_id=${locationId}`;
+    }
+
+    window.location.replace(finalUrl);
+  }, []);
+
+  return (
+    <div style={{
+      height: "100vh",
+      backgroundColor: "#00172b",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      color: "white",
+      fontSize: "1.5rem"
+    }}>
+      Redirecting…
+    </div>
+  );
+}
