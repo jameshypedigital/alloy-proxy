@@ -44,7 +44,7 @@ export default async function handler(req, res) {
       location_slug = path[0];
       offer = path[1];
 
-      finalUrl = `https://alloypersonaltraining.com/offer/local/${offer}?location=${location_slug}`;
+      finalUrl = `https://alloy-promo.com/${offer}?location=${location_slug}`;
     }
 
     /* ===============================
