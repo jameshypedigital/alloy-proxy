@@ -1,31 +1,19 @@
 export default async function handler(req, res) {
   try {
-    const slugParam = req.query.slug || [];
-    const slugArr = Array.isArray(slugParam) ? slugParam : [slugParam];
+    const { slug = [], ...utm } = req.query;
 
-    // Copy all query params but remove the catch-all slug key
-    const utm = { ...req.query };
-    delete utm.slug;
+    const path = Array.isArray(slug)
+      ? slug.map(s => s.toLowerCase().trim())
+      : [slug.toLowerCase().trim()];
 
-    // Normalize path pieces
-    const path = slugArr.map(s => String(s || "").toLowerCase().trim()).filter(Boolean);
-
-    // Also allow query-style fallback:
-    // /api/redirect?location_slug=slp-st-louis-park-mn&landing_page=3for99
-    const locationFromQuery =
-      (req.query.location_slug || req.query.location || req.query.location_id || "").toString().trim();
-    const offerFromQuery =
-      (req.query.landing_page || req.query.offer || "").toString().trim();
-
-    let finalUrl = null;
+    let finalUrl;
+    let page_type;
     let location_slug = null;
     let landing_page = null;
-    let page_type = null;
 
     /* ===============================
        BLOG POSTS
-       proxy: /blog/<blog-slug>
-       target: https://alloypersonaltraining.com/<blog-slug>/
+       /api/redirect/blog/<blog-slug>
     =============================== */
     if (path[0] === "blog" && path[1]) {
       page_type = "blog";
@@ -35,8 +23,7 @@ export default async function handler(req, res) {
 
     /* ===============================
        LOCATION PAGE
-       proxy: /locations/<location_slug>
-       target: https://alloypersonaltraining.com/location/<location_slug>/
+       /api/redirect/locations/<location-slug>
     =============================== */
     else if (path[0] === "locations" && path[1]) {
       page_type = "location";
@@ -45,33 +32,30 @@ export default async function handler(req, res) {
     }
 
     /* ===============================
-       OFFER PAGE (preferred)
-       proxy: /<location_slug>/<offer>
-       target: https://www.alloy-promo.com/<location_slug>/<offer>
+       OFFER PAGE
+       /api/redirect/<location-slug>/<offer>
     =============================== */
     else if (path.length >= 2) {
-      page_type = "landing_page";
+      page_type = "offer";
       location_slug = path[0];
       landing_page = path[1];
+
       finalUrl = `https://www.alloy-promo.com/${location_slug}/${landing_page}`;
     }
 
     /* ===============================
-       OFFER PAGE (query fallback for FB dynamic params)
-       proxy: /api/redirect?location_slug=...&landing_page=...
+       INVALID ROUTE
     =============================== */
-    else if (locationFromQuery && offerFromQuery) {
-      page_type = "landing_page";
-      location_slug = locationFromQuery.toLowerCase();
-      landing_page = offerFromQuery.toLowerCase();
-      finalUrl = `https://www.alloy-promo.com/${location_slug}/${landing_page}`;
-    }
-
     else {
-      return res.status(400).json({ ok: false, error: "Invalid landing page structure" });
+      return res.status(400).json({
+        ok: false,
+        error: "Invalid landing page structure"
+      });
     }
 
-    // Track event
+    /* ===============================
+       TRACK EVENT (n8n)
+    =============================== */
     await fetch("https://dashtraq.app.n8n.cloud/webhook/redirect-track", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -79,7 +63,7 @@ export default async function handler(req, res) {
         brand: "alloy",
         page_type,
         location_slug,
-        landing_page,       // <-- this is your offer
+        landing_page,
         utm,
         timestamp: Date.now()
       })
@@ -88,6 +72,10 @@ export default async function handler(req, res) {
     return res.redirect(302, finalUrl);
 
   } catch (err) {
-    return res.status(500).json({ ok: false, error: err.message });
+    return res.status(500).json({
+      ok: false,
+      error: err.message
+    });
   }
 }
+
