@@ -59,18 +59,18 @@ export default async function handler(req, res) {
        TRACK EVENT (n8n)
     =============================== */
     await fetch("https://dashtraq.app.n8n.cloud/webhook/redirect-track", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        brand: "alloy",
-        page_type,
-        slug: landing_page,
-        location_slug,
-        location_id: club || null,
-        utm,
-        timestamp: Date.now()
-      })
-    });
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    brand: "alloy",
+    club: clubId,          // ✅ ALWAYS club
+    slug: landing_page,    // ✅ offer OR blog slug
+    page_type,
+    utm,
+    timestamp: Date.now()
+  })
+});
+
 
     return res.redirect(302, finalUrl);
 
