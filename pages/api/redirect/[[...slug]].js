@@ -1,63 +1,56 @@
 export default async function handler(req, res) {
   try {
-    const { slug = [], location_slug, ...utm } = req.query;
+    const { slug = [], location_id, ...utm } = req.query;
 
     const path = Array.isArray(slug)
       ? slug.map(s => s.toLowerCase().trim())
-      : [slug.toLowerCase().trim()];
+      : [String(slug).toLowerCase().trim()];
 
     let finalUrl;
     let page_type;
-    let landing_page = null;
+    let location_slug = null;
+    let offer_slug = null;     // <-- this is your "offer"
+    let blog_slug = null;
 
-    /* ===============================
-       BLOG POSTS
-       /api/redirect/blog/<blog-slug>
-    =============================== */
+    // BLOG: /api/redirect/blog/<blog-slug>
     if (path[0] === "blog" && path[1]) {
       page_type = "blog";
-      landing_page = path[1];
-      finalUrl = `https://alloypersonaltraining.com/${landing_page}/`;
+      blog_slug = path.slice(1).join("/");   // supports deeper blog slugs if needed
+      finalUrl = `https://alloypersonaltraining.com/${blog_slug}/`;
     }
 
-    /* ===============================
-       LOCATION PAGE
-       /api/redirect/locations/<location-slug>
-    =============================== */
+    // LOCATION PAGE: /api/redirect/locations/<location-slug>
     else if (path[0] === "locations" && path[1]) {
       page_type = "location";
-      finalUrl = `https://alloypersonaltraining.com/location/${path[1]}/`;
+      location_slug = path[1];
+      finalUrl = `https://alloypersonaltraining.com/location/${location_slug}/`;
     }
 
-    /* ===============================
-       OFFER PAGE
-       /api/redirect/offer/<offer>
-       location_slug comes from query params
-    =============================== */
-    else if (path[0] === "offer" && path[1] && location_slug) {
+    // OFFER PAGE: /api/redirect/<location-slug>/<offer>
+    else if (path.length >= 2) {
       page_type = "offer";
-      landing_page = path[1];
-      finalUrl = `https://www.alloy-promo.com/${location_slug}/${landing_page}`;
+      location_slug = path[0];
+      offer_slug = path[1];
+
+      // ✅ Correct final URL format you want:
+      finalUrl = `https://www.alloy-promo.com/${location_slug}/${offer_slug}`;
     }
 
     else {
-      return res.status(400).json({
-        ok: false,
-        error: "Invalid redirect structure"
-      });
+      return res.status(400).json({ ok: false, error: "Invalid landing page structure" });
     }
 
-    /* ===============================
-       TRACK EVENT
-    =============================== */
+    // ✅ Track in n8n (IMPORTANT: send offer_slug + location_id)
     await fetch("https://dashtraq.app.n8n.cloud/webhook/redirect-track", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         brand: "alloy",
         page_type,
+        location_id: location_id || null,   // <-- comes from query string
         location_slug,
-        landing_page,
+        offer: offer_slug,                  // <-- THIS was missing / wrong before
+        blog_slug,
         utm,
         timestamp: Date.now()
       })
