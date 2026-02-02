@@ -1,6 +1,6 @@
 export default async function handler(req, res) {
   try {
-    const { slug = [], ...utm } = req.query;
+    const { slug = [], location_slug, ...utm } = req.query;
 
     const path = Array.isArray(slug)
       ? slug.map(s => s.toLowerCase().trim())
@@ -8,7 +8,6 @@ export default async function handler(req, res) {
 
     let finalUrl;
     let page_type;
-    let location_slug = null;
     let landing_page = null;
 
     /* ===============================
@@ -27,34 +26,29 @@ export default async function handler(req, res) {
     =============================== */
     else if (path[0] === "locations" && path[1]) {
       page_type = "location";
-      location_slug = path[1];
-      finalUrl = `https://alloypersonaltraining.com/location/${location_slug}/`;
+      finalUrl = `https://alloypersonaltraining.com/location/${path[1]}/`;
     }
 
     /* ===============================
        OFFER PAGE
-       /api/redirect/<location-slug>/<offer>
+       /api/redirect/offer/<offer>
+       location_slug comes from query params
     =============================== */
-    else if (path.length >= 2) {
+    else if (path[0] === "offer" && path[1] && location_slug) {
       page_type = "offer";
-      location_slug = path[0];
       landing_page = path[1];
-
       finalUrl = `https://www.alloy-promo.com/${location_slug}/${landing_page}`;
     }
 
-    /* ===============================
-       INVALID ROUTE
-    =============================== */
     else {
       return res.status(400).json({
         ok: false,
-        error: "Invalid landing page structure"
+        error: "Invalid redirect structure"
       });
     }
 
     /* ===============================
-       TRACK EVENT (n8n)
+       TRACK EVENT
     =============================== */
     await fetch("https://dashtraq.app.n8n.cloud/webhook/redirect-track", {
       method: "POST",
@@ -72,10 +66,7 @@ export default async function handler(req, res) {
     return res.redirect(302, finalUrl);
 
   } catch (err) {
-    return res.status(500).json({
-      ok: false,
-      error: err.message
-    });
+    return res.status(500).json({ ok: false, error: err.message });
   }
 }
 
