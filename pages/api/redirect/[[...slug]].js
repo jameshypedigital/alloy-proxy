@@ -42,19 +42,18 @@ export default async function handler(req, res) {
 
     // ✅ Track in n8n (IMPORTANT: send offer_slug + location_id)
     await fetch("https://dashtraq.app.n8n.cloud/webhook/redirect-track", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        brand: "alloy",
-        page_type,
-        location_id: location_id || null,   // <-- comes from query string
-        location_slug,
-        offer: offer_slug,                  // <-- THIS was missing / wrong before
-        blog_slug,
-        utm,
-        timestamp: Date.now()
-      })
-    });
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    brand: "alloy",
+    page_type,
+    slug: slug_value,          // offer OR blog slug
+    location_id,               // normalized from club
+    location_slug,
+    utm,
+    timestamp: Date.now()
+  })
+});
 
     return res.redirect(302, finalUrl);
 
