@@ -1,14 +1,33 @@
 export default async function handler(req, res) {
   try {
-    const { slug = [], club, ...utm } = req.query;
+    // 1️⃣ Extract identifiers FIRST
+    const {
+      slug = [],
+      location_id,
+      club,
+      ...rest
+    } = req.query;
 
+    // 2️⃣ Normalize club ID (canonical)
+    const clubId = club || location_id;
+
+    if (!clubId) {
+      return res.status(400).json({
+        ok: false,
+        error: "Missing club/location_id"
+      });
+    }
+
+    // 3️⃣ Remaining params are UTMs ONLY
+    const utm = { ...rest };
+
+    // Normalize path
     const path = Array.isArray(slug)
       ? slug.map(s => s.toLowerCase().trim())
       : [slug.toLowerCase().trim()];
 
     let finalUrl;
     let page_type;
-    let location_slug = null;
     let landing_page = null;
 
     /* ===============================
@@ -18,40 +37,33 @@ export default async function handler(req, res) {
     if (path[0] === "blog" && path[1]) {
       page_type = "blog";
       landing_page = path[1];
-
       finalUrl = `https://alloypersonaltraining.com/${landing_page}/`;
     }
 
     /* ===============================
        LOCATION PAGE
-       /api/redirect/locations/<location_slug>
+       /api/redirect/locations/<location-slug>
     =============================== */
     else if (path[0] === "locations" && path[1]) {
       page_type = "location";
-      location_slug = path[1];
-
-      finalUrl = `https://alloypersonaltraining.com/location/${location_slug}/`;
+      landing_page = path[1];
+      finalUrl = `https://alloypersonaltraining.com/location/${landing_page}/`;
     }
 
     /* ===============================
        OFFER PAGE
-       /api/redirect/<location_slug>/<offer>
+       /api/redirect/<location-slug>/<offer>
     =============================== */
     else if (path.length >= 2) {
       page_type = "offer";
-      location_slug = path[0];
       landing_page = path[1];
-
-      finalUrl = `https://www.alloy-promo.com/${location_slug}/${landing_page}`;
+      finalUrl = `https://www.alloy-promo.com/${path[0]}/${landing_page}`;
     }
 
-    /* ===============================
-       INVALID ROUTE
-    =============================== */
     else {
       return res.status(400).json({
         ok: false,
-        error: "Invalid redirect structure"
+        error: "Invalid landing page structure"
       });
     }
 
@@ -63,15 +75,13 @@ export default async function handler(req, res) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         brand: "alloy",
+        club: clubId,        // ✅ ALWAYS populated
+        slug: landing_page,  // ✅ offer OR blog slug
         page_type,
-        club,       // location identifier
-        slug: slug_value, // offer OR blog slug
-        utm,
+        utm,                 // ✅ UTMs only
         timestamp: Date.now()
       })
     });
-
-
 
     return res.redirect(302, finalUrl);
 
